@@ -6,11 +6,13 @@ import com.network.model.TcpSegment;
 import com.network.model.UdpDatagram;
 
 import org.pcap4j.core.NotOpenException;
+import org.pcap4j.core.PacketListener;
 import org.pcap4j.core.PcapHandle;
 import org.pcap4j.core.PcapNativeException;
 import org.pcap4j.core.Pcaps;
 import org.pcap4j.packet.IpV4Packet;
 import org.pcap4j.packet.IpV4Packet.IpV4Header;
+import org.pcap4j.packet.Packet;
 import org.pcap4j.packet.TcpPacket;
 import org.pcap4j.packet.TcpPacket.TcpHeader;
 import org.pcap4j.packet.UdpPacket;
@@ -53,14 +55,15 @@ public class PcapParser {
      * @throws PcapNativeException 文件打开或读取失败
      * @throws NotOpenException    句柄未打开
      */
-    public ParseResult parse(String filePath) throws PcapNativeException, NotOpenException {
+    public ParseResult parse(String filePath)
+            throws PcapNativeException, NotOpenException, InterruptedException {
         List<IpPacket> inboundPackets = new ArrayList<>();
         List<IpPacket> outboundPackets = new ArrayList<>();
 
         try (PcapHandle handle = Pcaps.openOffline(filePath)) {
-            handle.loop(-1, pcapPacket -> {
+            handle.loop(-1, (PacketListener) packet -> {
                 // --- 1. 提取 IPv4 层 ---
-                IpV4Packet ipV4 = pcapPacket.get(IpV4Packet.class);
+                IpV4Packet ipV4 = packet.get(IpV4Packet.class);
                 if (ipV4 == null) return; // 非 IPv4，跳过 (IPv6 / ARP / 其他)
 
                 IpV4Header ipHeader = ipV4.getHeader();
@@ -108,8 +111,8 @@ public class PcapParser {
                         .direction(direction);
 
                 // --- 5. 提取 TCP / UDP 载荷 ---
-                extractTcp(protocolNumber, ipBuilder, pcapPacket, totalLength, headerLength);
-                extractUdp(protocolNumber, ipBuilder, pcapPacket);
+                extractTcp(protocolNumber, ipBuilder, packet, totalLength, headerLength);
+                extractUdp(protocolNumber, ipBuilder, packet);
 
                 IpPacket ipPacket = ipBuilder.build();
 
@@ -144,19 +147,19 @@ public class PcapParser {
      * 提取 TCP 层数据并挂载到 IpPacket 上
      */
     private void extractTcp(int protocolNumber, IpPacket.Builder ipBuilder,
-                            org.pcap4j.core.PcapPacket pcapPacket,
-                            int ipTotalLength, int ipHeaderLength) {
+                            Packet packet, int ipTotalLength, int ipHeaderLength) {
         if (protocolNumber != 6) return; // 非 TCP
 
-        TcpPacket tcpPacket = pcapPacket.get(TcpPacket.class);
+        TcpPacket tcpPacket = packet.get(TcpPacket.class);
         if (tcpPacket == null) return;
 
         TcpHeader tcpHeader = tcpPacket.getHeader();
 
-        int srcPort = tcpHeader.getSrcPort().valueAsInt();
-        int dstPort = tcpHeader.getDstPort().valueAsInt();
-        long seqNum  = tcpHeader.getSequenceNumber() & 0xFFFFFFFFL;
-        long ackNum  = tcpHeader.getAcknowledgmentNumber() & 0xFFFFFFFFL;
+        // Pcap4J 的端口 value() 返回 short，需无符号化
+        int srcPort = tcpHeader.getSrcPort().value() & 0xFFFF;
+        int dstPort = tcpHeader.getDstPort().value() & 0xFFFF;
+        long seqNum = tcpHeader.getSequenceNumber() & 0xFFFFFFFFL;
+        long ackNum = tcpHeader.getAcknowledgmentNumber() & 0xFFFFFFFFL;
         int tcpHdrLen = (tcpHeader.getDataOffset() & 0xFF) * 4;
         int window   = tcpHeader.getWindow() & 0xFFFF;
         int dataLen  = ipTotalLength - ipHeaderLength - tcpHdrLen;
@@ -184,18 +187,18 @@ public class PcapParser {
      * 提取 UDP 层数据并挂载到 IpPacket 上
      */
     private void extractUdp(int protocolNumber, IpPacket.Builder ipBuilder,
-                            org.pcap4j.core.PcapPacket pcapPacket) {
+                            Packet packet) {
         if (protocolNumber != 17) return; // 非 UDP
 
-        UdpPacket udpPacket = pcapPacket.get(UdpPacket.class);
+        UdpPacket udpPacket = packet.get(UdpPacket.class);
         if (udpPacket == null) return;
 
         UdpHeader udpHeader = udpPacket.getHeader();
 
-        int srcPort  = udpHeader.getSrcPort().valueAsInt();
-        int dstPort  = udpHeader.getDstPort().valueAsInt();
-        int udpLen   = udpHeader.getLength() & 0xFFFF;
-        int dataLen  = udpLen - 8; // UDP 头部固定 8 字节
+        int srcPort = udpHeader.getSrcPort().value() & 0xFFFF;
+        int dstPort = udpHeader.getDstPort().value() & 0xFFFF;
+        int udpLen  = udpHeader.getLength() & 0xFFFF;
+        int dataLen = udpLen - 8; // UDP 头部固定 8 字节
 
         UdpDatagram datagram = new UdpDatagram.Builder()
                 .srcPort(srcPort)
