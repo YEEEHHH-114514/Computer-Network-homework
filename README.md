@@ -21,7 +21,7 @@
 
 ## 技术栈
 
-- **语言**: Java 17
+- **语言**: Java 21
 - **构建**: Maven
 - **PCAP 解析**: Pcap4J
 - **图表生成**: JFreeChart
