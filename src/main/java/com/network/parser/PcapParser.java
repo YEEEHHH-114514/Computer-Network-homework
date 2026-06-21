@@ -59,9 +59,13 @@ public class PcapParser {
             throws PcapNativeException, NotOpenException, InterruptedException {
         List<IpPacket> inboundPackets = new ArrayList<>();
         List<IpPacket> outboundPackets = new ArrayList<>();
+        List<IpPacket> allPackets = new ArrayList<>();  // 保持时序
 
         try (PcapHandle handle = Pcaps.openOffline(filePath)) {
             handle.loop(-1, (PacketListener) packet -> {
+                // --- 0. 包序号 (保持时序) ---
+                long packetIndex = allPackets.size();
+
                 // --- 1. 提取 IPv4 层 ---
                 IpV4Packet ipV4 = packet.get(IpV4Packet.class);
                 if (ipV4 == null) return; // 非 IPv4，跳过 (IPv6 / ARP / 其他)
@@ -108,6 +112,7 @@ public class PcapParser {
                         .moreFragments(moreFragments)
                         .dontFragment(dontFragment)
                         .ttl(ttl)
+                        .timestamp(packetIndex)
                         .direction(direction);
 
                 // --- 5. 提取 TCP / UDP 载荷 ---
@@ -117,6 +122,7 @@ public class PcapParser {
                 IpPacket ipPacket = ipBuilder.build();
 
                 // --- 6. 归类 ---
+                allPackets.add(ipPacket);  // 保持时序
                 if (direction == Direction.INBOUND) {
                     inboundPackets.add(ipPacket);
                 } else {
@@ -125,7 +131,7 @@ public class PcapParser {
             });
         }
 
-        return new ParseResult(inboundPackets, outboundPackets, filePath, localIp);
+        return new ParseResult(inboundPackets, outboundPackets, allPackets, filePath, localIp);
     }
 
     // ======================== 私有方法 ========================

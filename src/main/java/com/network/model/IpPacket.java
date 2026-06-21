@@ -42,6 +42,8 @@ public class IpPacket {
     private final boolean fragment;
     /** 存活时间 */
     private final int ttl;
+    /** 时间戳 (Unix 毫秒) */
+    private final long timestamp;
     /** 流量方向 */
     private final Direction direction;
 
@@ -68,6 +70,7 @@ public class IpPacket {
         this.dontFragment = builder.dontFragment;
         this.fragment = (builder.fragmentOffset > 0) || builder.moreFragments;
         this.ttl = builder.ttl;
+        this.timestamp = builder.timestamp;
         this.direction = builder.direction;
         this.tcpSegment = builder.tcpSegment;
         this.udpDatagram = builder.udpDatagram;
@@ -88,6 +91,8 @@ public class IpPacket {
     public boolean isDontFragment() { return dontFragment; }
     public boolean isFragment() { return fragment; }
     public int getTtl() { return ttl; }
+    /** 时间戳 (Unix 毫秒) */
+    public long getTimestamp() { return timestamp; }
     public Direction getDirection() { return direction; }
     public TcpSegment getTcpSegment() { return tcpSegment; }
     public UdpDatagram getUdpDatagram() { return udpDatagram; }
@@ -122,6 +127,7 @@ public class IpPacket {
         private boolean moreFragments;
         private boolean dontFragment;
         private int ttl;
+        private long timestamp;
         private Direction direction;
         private TcpSegment tcpSegment;
         private UdpDatagram udpDatagram;
@@ -138,6 +144,7 @@ public class IpPacket {
         public Builder moreFragments(boolean val){ this.moreFragments = val; return this; }
         public Builder dontFragment(boolean val) { this.dontFragment = val; return this; }
         public Builder ttl(int val)              { this.ttl = val; return this; }
+        public Builder timestamp(long val)       { this.timestamp = val; return this; }
         public Builder direction(Direction val)  { this.direction = val; return this; }
         public Builder tcpSegment(TcpSegment val){ this.tcpSegment = val; return this; }
         public Builder udpDatagram(UdpDatagram val) { this.udpDatagram = val; return this; }

@@ -33,17 +33,13 @@ public class ParseResult {
     private final int totalIpPackets;
 
     public ParseResult(List<IpPacket> inbound, List<IpPacket> outbound,
-                       String sourceFile, String localIp) {
+                       List<IpPacket> all, String sourceFile, String localIp) {
         this.inbound = Collections.unmodifiableList(new ArrayList<>(inbound));
         this.outbound = Collections.unmodifiableList(new ArrayList<>(outbound));
+        this.all = Collections.unmodifiableList(new ArrayList<>(all));
         this.sourceFile = sourceFile;
         this.localIp = localIp;
         this.totalIpPackets = inbound.size() + outbound.size();
-
-        // 构建合并列表
-        List<IpPacket> merged = new ArrayList<>(inbound);
-        merged.addAll(outbound);
-        this.all = Collections.unmodifiableList(merged);
     }
 
     // ======================== Getters ========================

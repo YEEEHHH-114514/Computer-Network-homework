@@ -128,7 +128,9 @@ public class ChartGenerator {
             throws IOException {
         // 中文字体支持
         chart.getTitle().setFont(new Font("Microsoft YaHei", Font.BOLD, 16));
-        chart.getLegend().setItemFont(new Font("Microsoft YaHei", Font.PLAIN, 12));
+        if (chart.getLegend() != null) {
+            chart.getLegend().setItemFont(new Font("Microsoft YaHei", Font.PLAIN, 12));
+        }
 
         File file = new File(outputDir, filename);
         ChartUtils.saveChartAsPNG(file, chart, width, height);

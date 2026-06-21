@@ -1,6 +1,7 @@
 package com.network;
 
 import com.network.analysis.*;
+import com.network.http.HttpSessionExtractor;
 import com.network.parser.ParseResult;
 import com.network.parser.PcapParser;
 import com.network.report.ChartGenerator;
@@ -78,6 +79,14 @@ public class Main {
         TcpControlBitsAnalyzer flagsAnalyzer = new TcpControlBitsAnalyzer();
         TcpControlBitsAnalyzer.Result flagsResult = flagsAnalyzer.analyze(parseResult);
         System.out.println("  ✓ TCP控制位");
+
+        HttpSessionExtractor httpExtractor = new HttpSessionExtractor();
+        HttpSessionExtractor.HttpSession httpSession = httpExtractor.extract(parseResult);
+        if (httpSession != null) {
+            System.out.println("  ✓ HTTP会话: " + httpSession.summary);
+        } else {
+            System.out.println("  ⚠ 未找到 HTTP 会话 (port 80)");
+        }
 
         // ---------- Step 3: 生成图表 ----------
         System.out.println("[3/4] 生成图表 PNG...");
@@ -160,6 +169,9 @@ public class Main {
         charts.generateTcpFlagsChart(ctx.tcpFlagsIn, ctx.tcpFlagsOut, ctx.chartTcpFlags);
 
         System.out.println("  ✓ 共生成 " + countCharts("output/charts") + " 张图表");
+
+        // 生成 HTTP 会话 HTML 表格
+        ctx.httpSessionTable = httpExtractor.toHtmlTable(httpSession);
 
         // ---------- Step 4: 生成 HTML ----------
         System.out.println("[4/4] 生成 HTML 报告...");
